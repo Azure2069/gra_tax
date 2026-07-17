@@ -1,4 +1,4 @@
-/// GoRouter configuration for the BizInvoice Ghana shell and invoice flows.
+/// GoRouter configuration for the GRA Compliance App shell and invoice flows.
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'features/auth/app_gate.dart';

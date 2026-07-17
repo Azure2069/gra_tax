@@ -1,4 +1,4 @@
-/// Drift-backed offline database for BizInvoice Ghana.
+/// Drift-backed offline database for the GRA Compliance App.
 import 'dart:io';
 
 import 'package:drift/drift.dart';

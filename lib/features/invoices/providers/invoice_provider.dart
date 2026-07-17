@@ -1,4 +1,4 @@
-/// Riverpod state for building invoice drafts and persisting them offline.
+// Riverpod state for building invoice drafts and persisting them offline.
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/providers/core_providers.dart';
@@ -17,6 +17,51 @@ class InvoiceLineDraft {
   final double unitPrice;
   final bool isTaxable;
   final double lineTotal;
+}
+
+class InvoicePaymentResolution {
+  const InvoicePaymentResolution({
+    required this.status,
+    required this.balanceDue,
+  });
+
+  final String status;
+  final double balanceDue;
+}
+
+InvoicePaymentResolution resolveInvoicePaymentState({
+  required double totalAmount,
+  required double discountAmount,
+  required double amountPaid,
+  required String selectedStatus,
+}) {
+  final baseAmount = totalAmount - discountAmount;
+  final safeBaseAmount = baseAmount < 0 ? 0.0 : baseAmount;
+  final safeAmountPaid = amountPaid < 0 ? 0.0 : amountPaid;
+
+  if (selectedStatus == 'paid' || safeAmountPaid >= safeBaseAmount) {
+    return const InvoicePaymentResolution(status: 'paid', balanceDue: 0.0);
+  }
+
+  if (selectedStatus == 'partial' || safeAmountPaid > 0) {
+    final remaining = safeBaseAmount - safeAmountPaid;
+    return InvoicePaymentResolution(
+      status: remaining <= 0 ? 'paid' : 'partial',
+      balanceDue: remaining < 0 ? 0.0 : remaining,
+    );
+  }
+
+  if (selectedStatus == 'overdue') {
+    return InvoicePaymentResolution(
+      status: 'overdue',
+      balanceDue: safeBaseAmount,
+    );
+  }
+
+  return InvoicePaymentResolution(
+    status: selectedStatus,
+    balanceDue: safeBaseAmount,
+  );
 }
 
 class InvoiceDraft {
@@ -63,6 +108,14 @@ class InvoiceNotifier extends AsyncNotifier<InvoiceDraft> {
     );
   }
 
+  void removeLine(int index) {
+    final existing = state.valueOrNull ?? const InvoiceDraft();
+    if (index < 0 || index >= existing.lines.length) return;
+
+    final lines = [...existing.lines]..removeAt(index);
+    state = AsyncValue.data(existing.copyWith(lines: lines));
+  }
+
   Future<void> createInvoice({
     required String invoiceNumber,
     required int customerId,
@@ -72,18 +125,24 @@ class InvoiceNotifier extends AsyncNotifier<InvoiceDraft> {
     String? businessName,
     String? businessPhone,
     String? businessTin,
+    required String status,
+    double amountPaid = 0.0,
   }) async {
+    final draft = state.valueOrNull ?? const InvoiceDraft();
     state = const AsyncValue.loading();
     try {
       final db = ref.read(databaseProvider);
-      final totalAmount =
-          state.valueOrNull?.lines.fold<double>(
-            0.0,
-            (sum, line) => sum + line.lineTotal,
-          ) ??
-          0.0;
-      final discount = state.valueOrNull?.discountAmount ?? 0.0;
-      final balanceDue = totalAmount - discount;
+      final totalAmount = draft.lines.fold<double>(
+        0.0,
+        (sum, line) => sum + line.lineTotal,
+      );
+      final discount = draft.discountAmount;
+      final paymentState = resolveInvoicePaymentState(
+        totalAmount: totalAmount,
+        discountAmount: discount,
+        amountPaid: amountPaid,
+        selectedStatus: status,
+      );
       final invoiceId = await db.createInvoice(
         invoiceNumber: invoiceNumber,
         customerId: customerId,
@@ -95,12 +154,11 @@ class InvoiceNotifier extends AsyncNotifier<InvoiceDraft> {
         businessTin: businessTin,
         discountAmount: discount,
         totalAmount: totalAmount,
-        balanceDue: balanceDue,
-        status: 'unpaid',
+        balanceDue: paymentState.balanceDue,
+        status: paymentState.status,
       );
 
-      for (final line
-          in state.valueOrNull?.lines ?? const <InvoiceLineDraft>[]) {
+      for (final line in draft.lines) {
         await db.addInvoiceItem(
           invoiceId: invoiceId,
           productName: line.productName,
@@ -113,9 +171,9 @@ class InvoiceNotifier extends AsyncNotifier<InvoiceDraft> {
 
       state = AsyncValue.data(
         InvoiceDraft(
-          lines: state.valueOrNull?.lines ?? const [],
+          lines: draft.lines,
           discountAmount: discount,
-          status: 'unpaid',
+          status: paymentState.status,
         ),
       );
     } catch (error, stackTrace) {

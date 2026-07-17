@@ -1,11 +1,11 @@
 {
-    "name": "gra_complaint",
-    "short_name": "gra_complaint",
+    "name": "GRA Compliance App",
+    "short_name": "GRA Compliance",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#FFFFFF",
+    "theme_color": "#0D6B4D",
+    "description": "Offline GRA compliance, invoicing, and receivables app.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

@@ -68,7 +68,7 @@ class InvoicePdfService {
             crossAxisAlignment: pw.CrossAxisAlignment.start,
             children: [
               pw.Text(
-                'BizInvoice Ghana',
+                'GRA Compliance App',
                 style: pw.TextStyle(
                   fontSize: 24,
                   fontWeight: pw.FontWeight.bold,

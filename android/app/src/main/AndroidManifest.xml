@@ -9,7 +9,7 @@
     </queries>
 
     <application
-        android:label="gra_complaint"
+        android:label="GRA Compliance App"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

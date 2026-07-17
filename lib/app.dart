@@ -11,7 +11,7 @@ class TraderFlowApp extends ConsumerWidget {
     final router = ref.watch(appRouterProvider);
     return MaterialApp.router(
       debugShowCheckedModeBanner: false,
-      title: 'BizInvoice Ghana',
+      title: 'GRA Compliance App',
       theme: AppTheme.light,
       routerConfig: router,
     );

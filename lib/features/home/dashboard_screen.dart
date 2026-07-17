@@ -7,7 +7,6 @@ import '../invoices/screens/invoice_creation_screen.dart';
 import '../invoices/screens/receivables_screen.dart';
 import '../invoices/screens/vat_summary_screen.dart';
 import '../more/customers_screen.dart';
-import '../more/debts_screen.dart';
 import '../more/expenses_screen.dart';
 
 class DashboardScreen extends ConsumerWidget {
@@ -56,7 +55,7 @@ class DashboardScreen extends ConsumerWidget {
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(p?.business ?? 'TraderFlow Ghana'),
+            Text(p?.business ?? 'GRA Compliance App'),
             Text(
               '${p?.location ?? ''} · Offline ready',
               style: const TextStyle(
@@ -147,7 +146,7 @@ class DashboardScreen extends ConsumerWidget {
             children: [
               action(
                 'Create invoice',
-                'GRA-style invoice',
+                'Add products and complete sale',
                 Icons.receipt_long_outlined,
                 const InvoiceCreationScreen(),
               ),
