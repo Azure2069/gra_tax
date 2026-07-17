@@ -79,7 +79,7 @@ class DashboardScreen extends ConsumerWidget {
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
               gradient: const LinearGradient(
-                colors: [Color(0xFF0D6B4D), Color(0xFF084C38)],
+                colors: [Color(0xFFF97316), Color(0xFFB83B00)],
               ),
               borderRadius: BorderRadius.circular(28),
             ),

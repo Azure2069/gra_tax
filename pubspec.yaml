@@ -45,7 +45,7 @@ flutter_launcher_icons:
     generate: true
     image_path: "asstes/app_logo.png"
     background_color: "#FFFFFF"
-    theme_color: "#0D6B4D"
+    theme_color: "#E85D04"
   windows:
     generate: true
     image_path: "asstes/app_logo.png"

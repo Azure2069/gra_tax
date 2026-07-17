@@ -4,7 +4,7 @@
     "start_url": ".",
     "display": "standalone",
     "background_color": "#FFFFFF",
-    "theme_color": "#0D6B4D",
+    "theme_color": "#E85D04",
     "description": "Offline GRA compliance, invoicing, and receivables app.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
