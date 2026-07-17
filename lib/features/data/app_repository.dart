@@ -1,0 +1,29 @@
+import 'package:drift/drift.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:uuid/uuid.dart';
+import '../../core/database/app_database.dart';
+import '../../core/providers/core_providers.dart';
+
+class CartLine {const CartLine({required this.product,required this.quantity});final Product product;final int quantity;double get total=>product.sellingPrice*quantity;double get cost=>product.costPrice*quantity;CartLine copyWith({int? quantity})=>CartLine(product:product,quantity:quantity??this.quantity);}
+class AppRepository {
+  AppRepository(this.db);final AppDatabase db;
+  Stream<List<Product>> products(){final q=db.select(db.products)..orderBy([(p)=>OrderingTerm.asc(p.name)]);return q.watch();}
+  Stream<List<Customer>> customers(){final q=db.select(db.customers)..orderBy([(c)=>OrderingTerm.asc(c.name)]);return q.watch();}
+  Stream<List<Sale>> sales(){final q=db.select(db.sales)..orderBy([(s)=>OrderingTerm.desc(s.createdAt)]);return q.watch();}
+  Stream<List<Expense>> expenses(){final q=db.select(db.expenses)..orderBy([(e)=>OrderingTerm.desc(e.createdAt)]);return q.watch();}
+  Stream<List<Debt>> debts(){final q=db.select(db.debts)..orderBy([(d)=>OrderingTerm.desc(d.createdAt)]);return q.watch();}
+  Future<void> addProduct(String name,String category,String unit,double cost,double selling,int qty,int low) async {final now=DateTime.now();await db.into(db.products).insert(ProductsCompanion.insert(id:const Uuid().v4(),name:name,category:Value(category),unit:Value(unit),costPrice:cost,sellingPrice:selling,quantity:qty,lowStockThreshold:Value(low),createdAt:now,updatedAt:now));}
+  Future<void> adjust(Product p,int qty) async {if(qty<0)throw StateError('Stock cannot be negative');await (db.update(db.products)..where((x)=>x.id.equals(p.id))).write(ProductsCompanion(quantity:Value(qty),updatedAt:Value(DateTime.now())));}
+  Future<void> addCustomer(String name,String phone,String location) async =>db.into(db.customers).insert(CustomersCompanion.insert(id:const Uuid().v4(),name:name,phone:Value(phone.isEmpty?null:phone),location:Value(location.isEmpty?null:location),createdAt:DateTime.now()));
+  Future<void> addExpense(String category,String description,double amount,String method) async=>db.into(db.expenses).insert(ExpensesCompanion.insert(id:const Uuid().v4(),category:category,description:description,amount:amount,paymentMethod:method,createdAt:DateTime.now()));
+  Future<void> sale({required List<CartLine> items,required String method,required double paid,String? customerId,String? network,String? reference}) async {if(items.isEmpty)throw StateError('Cart is empty');final total=items.fold<double>(0,(s,i)=>s+i.total),cost=items.fold<double>(0,(s,i)=>s+i.cost);if(paid<0||paid>total)throw StateError('Invalid amount paid');if(method=='credit'&&(customerId==null||customerId.isEmpty))throw StateError('Choose a customer');if(method=='momo'&&(reference==null||reference.trim().isEmpty))throw StateError('Enter MoMo reference');final saleId=const Uuid().v4();await db.transaction(() async {for(final item in items){final current=await (db.select(db.products)..where((p)=>p.id.equals(item.product.id))).getSingle();if(item.quantity>current.quantity)throw StateError('Not enough stock for ${current.name}');}await db.into(db.sales).insert(SalesCompanion.insert(id:saleId,customerId:Value(customerId),totalAmount:total,totalCost:cost,amountPaid:paid,paymentMethod:method,momoNetwork:Value(network),momoReference:Value(reference),createdAt:DateTime.now()));for(final item in items){await db.into(db.saleItems).insert(SaleItemsCompanion.insert(id:const Uuid().v4(),saleId:saleId,productId:item.product.id,productName:item.product.name,quantity:item.quantity,unitPrice:item.product.sellingPrice,unitCost:item.product.costPrice));await (db.update(db.products)..where((p)=>p.id.equals(item.product.id))).write(ProductsCompanion(quantity:Value(item.product.quantity-item.quantity),updatedAt:Value(DateTime.now())));}final balance=total-paid;if(balance>0&&customerId!=null){await db.into(db.debts).insert(DebtsCompanion.insert(id:const Uuid().v4(),customerId:customerId,saleId:Value(saleId),originalAmount:balance,balance:balance,createdAt:DateTime.now()));}});}
+  Future<void> payDebt(Debt debt,double amount,String method) async {if(amount<=0||amount>debt.balance)throw StateError('Invalid payment');final balance=debt.balance-amount;await db.transaction(() async {await db.into(db.debtPayments).insert(DebtPaymentsCompanion.insert(id:const Uuid().v4(),debtId:debt.id,amount:amount,paymentMethod:method,createdAt:DateTime.now()));await (db.update(db.debts)..where((d)=>d.id.equals(debt.id))).write(DebtsCompanion(balance:Value(balance),status:Value(balance==0?'paid':'open')));});}
+}
+final repoProvider=Provider((ref)=>AppRepository(ref.watch(databaseProvider)));
+final productsProvider=StreamProvider((ref)=>ref.watch(repoProvider).products());
+final customersProvider=StreamProvider((ref)=>ref.watch(repoProvider).customers());
+final salesProvider=StreamProvider((ref)=>ref.watch(repoProvider).sales());
+final expensesProvider=StreamProvider((ref)=>ref.watch(repoProvider).expenses());
+final debtsProvider=StreamProvider((ref)=>ref.watch(repoProvider).debts());
+class CartController extends StateNotifier<List<CartLine>>{CartController():super(const[]);void add(Product p){final i=state.indexWhere((x)=>x.product.id==p.id);if(i<0){state=[...state,CartLine(product:p,quantity:1)];return;}if(state[i].quantity>=p.quantity)return;final n=[...state];n[i]=n[i].copyWith(quantity:n[i].quantity+1);state=n;}void minus(String id){final i=state.indexWhere((x)=>x.product.id==id);if(i<0)return;if(state[i].quantity==1){state=state.where((x)=>x.product.id!=id).toList();return;}final n=[...state];n[i]=n[i].copyWith(quantity:n[i].quantity-1);state=n;}void clear()=>state=const[];}
+final cartProvider=StateNotifierProvider<CartController,List<CartLine>>((ref)=>CartController());
